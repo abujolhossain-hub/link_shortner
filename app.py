@@ -1,12 +1,14 @@
 from flask import Flask, request, jsonify, redirect
+from flask_cors import CORS
 import string, random
 import qrcode
 import io
 import base64
 
 app = Flask(__name__)
+CORS(app)
 
-url_db = {}  # short_code: original_url mapping
+url_db = {}  # short_code -> original URL mapping
 
 def generate_short_code(length=6):
     chars = string.ascii_letters + string.digits
@@ -22,13 +24,12 @@ def shorten_url():
     if not original_url:
         return jsonify({'error': 'No URL provided'}), 400
     
-    # generate short code
     code = generate_short_code()
     url_db[code] = original_url
 
     short_url = request.host_url + code
 
-    # generate QR code
+    # Generate QR code image and encode base64
     img = qrcode.make(short_url)
     buf = io.BytesIO()
     img.save(buf, format='PNG')
@@ -40,7 +41,7 @@ def shorten_url():
     })
 
 @app.route('/<code>')
-def redirect_to_original(code):
+def redirect_short_url(code):
     original_url = url_db.get(code)
     if original_url:
         return redirect(original_url)
