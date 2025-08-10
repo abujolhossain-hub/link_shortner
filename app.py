@@ -7,7 +7,7 @@ from flask_cors import CORS
 import qrcode
 from io import BytesIO
 import base64
-import validators
+from urllib.parse import urlparse
 
 app = Flask(__name__)
 CORS(app)
@@ -47,6 +47,13 @@ def generate_qr_code(url):
     img.save(buffered, format="PNG")
     return base64.b64encode(buffered.getvalue()).decode('utf-8')
 
+def is_valid_url(url):
+    try:
+        result = urlparse(url)
+        return all([result.scheme, result.netloc])
+    except ValueError:
+        return False
+
 @app.route('/shorten', methods=['POST'])
 def shorten_url():
     data = request.get_json()
@@ -57,8 +64,12 @@ def shorten_url():
     if not original_url:
         return jsonify({"error": "URL cannot be empty"}), 400
     
+    # Add https:// if missing scheme
+    if not original_url.startswith(('http://', 'https://')):
+        original_url = 'https://' + original_url
+    
     # Validate URL format
-    if not validators.url(original_url):
+    if not is_valid_url(original_url):
         return jsonify({"error": "Invalid URL format"}), 400
     
     db = get_db()
